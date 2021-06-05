@@ -20,6 +20,7 @@ describe('instance', function () {
         'isCancel',
         'all',
         'spread',
+        'isAxiosError',
         'default'].indexOf(prop) > -1) {
         continue;
       }
