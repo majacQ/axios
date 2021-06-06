@@ -141,7 +141,7 @@ axios.get('/user', {
   })
   .then(function () {
     // always executed
-  });  
+  });
 
 // Want to use async/await? Add the `async` keyword to your outer function/method.
 async function getUser() {
@@ -414,6 +414,17 @@ These are the available config options for making requests. Only the `url` is re
   // If set to 0, no redirects will be followed.
   maxRedirects: 5, // default
 
+  // `trackRedirects` defines whether to accumulate details about each redirect
+  // throughout the request. If set to true, the response will include a `responseUrl`
+  // property that will be the final url in the redirect chain as well as a `redirects`
+  // array that will include basic details about each request in the redirect chain,
+  // including the first and last requests (i.e. the original request, any subsequent
+  // redirects, as well as the final request). Those details will include:
+  // `url`: requested url
+  // `headers`: response headers
+  // `statusCode`: response status code
+  trackRedirects: false, // default
+
   // `socketPath` defines a UNIX Socket to be used in node.js.
   // e.g. '/var/run/docker.sock' to send requests to the docker daemon.
   // Only either `socketPath` or `proxy` can be specified.
@@ -447,6 +458,17 @@ These are the available config options for making requests. Only the `url` is re
     }
   },
 
+  // `checkServerIdentity` defines a hook to check the server's SSL certificate properties (NodeJS only)
+  checkServerIdentity: function (host, cert) {
+    // Pin the exact certificate fingerprint
+    if (cert.fingerprint !== 'E7:EA:A9:74:E1:A1:FF:FD:A8:FB:59:45:1A:AE:92:32:6B:94:23:3E') {
+      const msg = 'Certificate verification error: ' +
+        `The certificate of '${cert.subject.CN}' ` +
+        'does not match our pinned fingerprint';
+      return new Error(msg);
+    }
+  }
+
   // `cancelToken` specifies a cancel token that can be used to cancel the request
   // (see Cancellation section below for details)
   cancelToken: new CancelToken(function (cancel) {
@@ -458,6 +480,19 @@ These are the available config options for making requests. Only the `url` is re
   // - Node only (XHR cannot turn off decompression)
   decompress: true // default
 
+  // transitional options for backward compatibility that may be removed in the newer versions
+  transitional: {
+    // silent JSON parsing mode
+    // `true`  - ignore JSON parsing errors and set response.data to null if parsing failed (old behaviour)
+    // `false` - throw SyntaxError if JSON parsing failed (Note: responseType must be set to 'json')
+    silentJSONParsing: true; // default value for the current Axios version
+
+    // try to parse the response string as JSON even if `resposeType` is not 'json'
+    forcedJSONParsing: true;
+    
+    // throw ETIMEDOUT error instead of generic ECONNABORTED on request timeouts
+    clarifyTimeoutError: false;
+  }
 }
 ```
 
@@ -714,6 +749,7 @@ cancel();
 ```
 
 > Note: you can cancel several requests with the same cancel token.
+> If a cancellation token is already cancelled at the moment of starting an Axios request, then the request is cancelled immediately, without any attempts to make real request.
 
 ## Using application/x-www-form-urlencoded format
 
@@ -813,10 +849,21 @@ axios depends on a native ES6 Promise implementation to be [supported](http://ca
 If your environment doesn't support ES6 Promises, you can [polyfill](https://github.com/jakearchibald/es6-promise).
 
 ## TypeScript
-axios includes [TypeScript](http://typescriptlang.org) definitions.
+
+axios includes [TypeScript](http://typescriptlang.org) definitions and a type guard for axios errors.
+
 ```typescript
-import axios from 'axios';
-axios.get('/user?ID=12345');
+let user: User = null;
+try {
+  const { data } = await axios.get('/user?ID=12345');
+  user = data.userDetails;
+} catch (error) {
+  if (axios.isAxiosError(error)) {
+    handleAxiosError(error);
+  } else {
+    handleUnexpectedError(error);
+  }
+}
 ```
 
 ## Online one-click setup
