@@ -24,6 +24,8 @@ describe('defaults', function () {
     expect(defaults.transformRequest[0]('foo=bar')).toEqual('foo=bar');
   });
 
+  <<<<<<< release/1.0.0-beta.1
+  =======
   it('should transform response json', function () {
     var data = defaults.transformResponse[0].call(defaults, '{"foo":"bar"}');
 
@@ -35,6 +37,7 @@ describe('defaults', function () {
     expect(defaults.transformResponse[0]('foo=bar')).toEqual('foo=bar');
   });
 
+  >>>>>>> master
   it('should use global defaults config', function (done) {
     axios('/foo');
 

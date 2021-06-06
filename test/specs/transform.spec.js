@@ -7,36 +7,58 @@ describe('transform', function () {
     jasmine.Ajax.uninstall();
   });
 
-  it('should transform JSON to string', function (done) {
-    var data = {
-      foo: 'bar'
-    };
-
-    axios.post('/foo', data);
-
-    getAjaxRequest().then(function (request) {
-      expect(request.params).toEqual('{"foo":"bar"}');
-      done();
-    });
-  });
-
-  it('should transform string to JSON', function (done) {
-    var response;
-
-    axios('/foo').then(function (data) {
-      response = data;
-    });
-
-    getAjaxRequest().then(function (request) {
-      request.respondWith({
-        status: 200,
-        responseText: '{"foo": "bar"}'
-      });
-
-      setTimeout(function () {
-        expect(typeof response.data).toEqual('object');
-        expect(response.data.foo).toEqual('bar');
+  describe('transform request', function () {
+    it('should transform JSON to string', function (done) {
+      var data = {
+        foo: 'bar'
+      };
+  
+      axios.post('/foo', data);
+  
+      getAjaxRequest().then(function (request) {
+        expect(request.params).toEqual('{"foo":"bar"}');
         done();
+      });
+    });
+  
+    it('should transform string to JSON', function (done) {
+      var response;
+  
+      axios('/foo').then(function (data) {
+        response = data;
+      });
+  
+      getAjaxRequest().then(function (request) {
+        request.respondWith({
+          status: 200,
+          responseText: '{"foo": "bar"}'
+        });
+  
+        setTimeout(function () {
+          expect(typeof response.data).toEqual('object');
+          expect(response.data.foo).toEqual('bar');
+          done();
+        }, 100);
+      });
+    });
+  
+    it('should override default transform', function (done) {
+      var data = {
+        foo: 'bar'
+      };
+  
+      axios.post('/foo', data, {
+        transformRequest: function (data) {
+          return data;
+        }
+      });
+  
+      getAjaxRequest().then(function (request) {
+        expect(typeof request.params).toEqual('object');
+        done();
+  <<<<<<< release/1.0.0-beta.1
+      });
+  =======
       }, 100);
     });
   });
@@ -133,45 +155,67 @@ describe('transform', function () {
       transformRequest: function (data) {
         return data;
       }
+  >>>>>>> master
     });
-
-    getAjaxRequest().then(function (request) {
-      expect(typeof request.params).toEqual('object');
-      done();
+  
+    it('should allow an Array of transformers', function (done) {
+      var data = {
+        foo: 'bar'
+      };
+  
+      axios.post('/foo', data, {
+        transformRequest: axios.defaults.transformRequest.concat(
+          function (data) {
+            return data.replace('bar', 'baz');
+          }
+        )
+      });
+  
+      getAjaxRequest().then(function (request) {
+        expect(request.params).toEqual('{"foo":"baz"}');
+        done();
+      });
     });
-  });
-
-  it('should allow an Array of transformers', function (done) {
-    var data = {
-      foo: 'bar'
-    };
-
-    axios.post('/foo', data, {
-      transformRequest: axios.defaults.transformRequest.concat(
-        function (data) {
-          return data.replace('bar', 'baz');
+  
+    it('should allowing mutating headers', function (done) {
+      var token = Math.floor(Math.random() * Math.pow(2, 64)).toString(36);
+  
+      axios('/foo', {
+        transformRequest: function (data, headers) {
+          headers['X-Authorization'] = token;
         }
-      )
+      });
+  
+      getAjaxRequest().then(function (request) {
+        expect(request.requestHeaders['X-Authorization']).toEqual(token);
+        done();
+      });
     });
+  })
 
-    getAjaxRequest().then(function (request) {
-      expect(request.params).toEqual('{"foo":"baz"}');
-      done();
-    });
-  });
+  describe('transform response', function () {
+    it('should transform data', function (done) {
+      var response;
 
-  it('should allowing mutating headers', function (done) {
-    var token = Math.floor(Math.random() * Math.pow(2, 64)).toString(36);
+      axios('/foo', {
+        transformResponse: function (data) {
+          return data + ' - modified by transformResponse';
+        }
+      }).then(function (data) {
+        response = data;
+      });
 
-    axios('/foo', {
-      transformRequest: function (data, headers) {
-        headers['X-Authorization'] = token;
-      }
-    });
+      getAjaxRequest().then(function (request) {
+        request.respondWith({
+          status: 200,
+          responseText: 'OK'
+        });
 
-    getAjaxRequest().then(function (request) {
-      expect(request.requestHeaders['X-Authorization']).toEqual(token);
-      done();
+        setTimeout(function () {
+          expect(response.data).toBe('OK - modified by transformResponse');
+          done();
+        }, 100);
+      });
     });
   });
 });

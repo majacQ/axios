@@ -7,15 +7,29 @@ var zlib = require('zlib');
 var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
+  <<<<<<< release/1.0.0-beta.1
+var server, server2, proxy;
+  =======
 var pkg = require('./../../../package.json');
 var server, proxy;
+  >>>>>>> master
 
 describe('supports http with nodejs', function () {
+
+  beforeEach(function () {
+    var caPath = path.join(__dirname, 'certs', 'private-root-ca.cert.pem');
+    var caBuf = fs.readFileSync(caPath);
+    https.globalAgent.options.ca = [caBuf];
+  });
 
   afterEach(function () {
     if (server) {
       server.close();
       server = null;
+    }
+    if (server2) {
+      server2.close();
+      server2 = null;
     }
     if (proxy) {
       proxy.close()
@@ -142,7 +156,11 @@ describe('supports http with nodejs', function () {
     };
 
     server = http.createServer(function (req, res) {
+  <<<<<<< release/1.0.0-beta.1
+      res.setHeader('Content-Type', 'application/json;charset=utf-8');
+  =======
       res.setHeader('Content-Type', 'application/json');
+  >>>>>>> master
       var bomBuffer = Buffer.from([0xEF, 0xBB, 0xBF])
       var jsonBuffer = Buffer.from(JSON.stringify(data));
       res.end(Buffer.concat([bomBuffer, jsonBuffer]));
@@ -233,6 +251,61 @@ describe('supports http with nodejs', function () {
         done();
       }).catch(function (err) {
         done(err);
+      });
+    });
+  });
+
+  it('should support trackRedirects == true', function (done) {
+    var str = 'test response';
+
+    server = http.createServer(function (req, res) {
+      var parsed = url.parse(req.url);
+
+      if (parsed.pathname === '/one') {
+        res.setHeader('Location', '/two');
+        res.statusCode = 302;
+        res.end();
+      } else {
+        res.end(str);
+      }
+    }).listen(4444, function () {
+      axios.get('http://localhost:4444/one', {
+        trackRedirects: true
+      }).then(function (res) {
+        assert.equal(res.responseUrl, 'http://localhost:4444/two');
+        assert.equal(res.redirects.length, 2);
+        assert.equal(res.redirects[0].url, 'http://localhost:4444/one');
+        assert.equal(res.redirects[0].headers.location, '/two');
+        assert.equal(res.redirects[0].statusCode, 302);
+
+        assert.equal(res.redirects[1].url, 'http://localhost:4444/two');
+        assert.equal(res.redirects[1].headers.location, undefined);
+        assert.equal(res.redirects[1].statusCode, 200);
+        done();
+      });
+    });
+  })
+
+  it('should support trackRedirects == false', function (done) {
+    var str = 'test response';
+
+    server = http.createServer(function (req, res) {
+      var parsed = url.parse(req.url);
+
+      if (parsed.pathname === '/one') {
+        res.setHeader('Location', '/two');
+        res.statusCode = 302;
+        res.end();
+      } else {
+        res.end(str);
+      }
+    }).listen(4444, function () {
+      axios.get('http://localhost:4444/one', {
+        trackRedirects: false
+      }).then(function (res) {
+        assert.equal(res.responseUrl, undefined);
+        assert.equal(res.redirects, undefined);
+        done();
       });
     });
   });
@@ -457,7 +530,7 @@ describe('supports http with nodejs', function () {
     });
   });
 
-  it('should support streams', function (done) {
+  it('should support response type stream', function (done) {
     server = http.createServer(function (req, res) {
       req.pipe(res);
     }).listen(4444, function () {
@@ -475,6 +548,83 @@ describe('supports http with nodejs', function () {
             done();
           });
         });
+    });
+  });
+
+  it('should support response type text', function (done) {
+    var data = {
+      firstName: 'Fred',
+      lastName: 'Flintstone',
+      emailAddr: 'fred@example.com'
+    };
+
+    server = http.createServer(function (req, res) {
+      res.end(JSON.stringify(data));
+    }).listen(4444, function () {
+      axios.get('http://localhost:4444/',{
+         responseType: 'text'
+      }).then(function (res) {
+        assert.equal(typeof res.data, 'string');
+        done();
+      });
+    });
+  });
+
+  it('should support response type empty', function (done) {
+    var data = {
+      firstName: 'Fred',
+      lastName: 'Flintstone',
+      emailAddr: 'fred@example.com'
+    };
+
+    server = http.createServer(function (req, res) {
+      res.end(JSON.stringify(data));
+    }).listen(4444, function () {
+      axios.get('http://localhost:4444/',{
+         responseType: ''
+      }).then(function (res) {
+        assert.equal(typeof res.data, 'string');
+        done();
+      });
+    });
+  });
+
+  it('should support response type arraybuffer', function (done) {
+    var data = {
+      firstName: 'Fred',
+      lastName: 'Flintstone',
+      emailAddr: 'fred@example.com'
+    };
+
+    server = http.createServer(function (req, res) {
+      res.end(JSON.stringify(data));
+    }).listen(4444, function () {
+      axios.get('http://localhost:4444/',{
+         responseType: 'arraybuffer'
+      }).then(function (res) {
+        assert.equal(typeof res.data, 'object');
+        assert.equal(Object.prototype.toString.call(res.data), '[object Uint8Array]');
+        done();
+      });
+    });
+  });
+
+  it('should support response type json', function (done) {
+    var data = {
+      firstName: 'Fred',
+      lastName: 'Flintstone',
+      emailAddr: 'fred@example.com'
+    };
+
+    server = http.createServer(function (req, res) {
+      res.end(JSON.stringify(data));
+    }).listen(4444, function () {
+      axios.get('http://localhost:4444/',{
+         responseType: 'json'
+      }).then(function (res) {
+        assert.deepEqual(res.data, data);
+        done();
+      });
     });
   });
 
@@ -939,6 +1089,24 @@ describe('supports http with nodejs', function () {
     });
   });
 
+  <<<<<<< release/1.0.0-beta.1
+  it('should check server identity', function (done) {
+    server2 = https.createServer({
+        key: fs.readFileSync(path.join(__dirname, 'certs', 'privkey.pem')),
+        cert: fs.readFileSync(path.join(__dirname, 'certs', 'fullchain.pem'))
+      },
+      function (req, res) {
+        res.end();
+      }).listen(4343, function () {
+      axios.get('/', {
+        baseURL: 'https://localhost:4343/',
+        checkServerIdentity: function (host, cert) {
+          assert.equal(cert.fingerprint, 'E7:EA:A9:74:E1:A1:FF:FD:A8:FB:59:45:1A:AE:92:32:6B:94:23:3E');
+        }
+      }).then(function (res) {
+        assert.equal(res.config.baseURL, 'https://localhost:4343/');
+        assert.equal(res.config.url, '/');
+  =======
   it('should supply a user-agent if one is not specified', function (done) {
     server = http.createServer(function (req, res) {
       assert.equal(req.headers["user-agent"], 'axios/' + pkg.version);
@@ -946,11 +1114,31 @@ describe('supports http with nodejs', function () {
     }).listen(4444, function () {
       axios.get('http://localhost:4444/'
       ).then(function (res) {
+  >>>>>>> master
         done();
       });
     });
   });
 
+  <<<<<<< release/1.0.0-beta.1
+  it('should check server identity and reject', function (done) {
+    server2 = https.createServer({
+        key: fs.readFileSync(path.join(__dirname, 'certs', 'privkey.pem')),
+        cert: fs.readFileSync(path.join(__dirname, 'certs', 'fullchain.pem'))
+      },
+      function (req, res) {
+        res.end();
+      }).listen(4343, function () {
+      axios.get('/', {
+        baseURL: 'https://localhost:4343/',
+        checkServerIdentity: function (host, cert) {
+          return new Error('You shall not pass (host: ' + host + ', fingerprint: ' + cert.fingerprint + ')');
+        }
+      }).catch(function (err) {
+        assert.equal(
+          err.message, 'You shall not pass' +
+          ' (host: localhost, fingerprint: E7:EA:A9:74:E1:A1:FF:FD:A8:FB:59:45:1A:AE:92:32:6B:94:23:3E)');
+  =======
   it('should omit a user-agent if one is explicitly disclaimed', function (done) {
     server = http.createServer(function (req, res) {
       assert.equal("user-agent" in req.headers, false);
@@ -963,10 +1151,14 @@ describe('supports http with nodejs', function () {
         }
       }
       ).then(function (res) {
+  >>>>>>> master
         done();
       });
     });
   });
+  <<<<<<< release/1.0.0-beta.1
+  =======
 
+  >>>>>>> master
 });
 
